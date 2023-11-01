@@ -1,1 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prices</title>
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename = 'style.css') }}">
+    <script src="{{ url_for('static', filename = 'jquery.js') }}"></script>
+    
+</head>
+<body>
+    
+    <div class="container">
+        <div class="column">
+            <div class="tab">
+                <button class="tablinks" onclick="openTab(event, 'Tab1')">Get Price</button>
+                <button class="tablinks" onclick="openTab(event, 'Tab2')">Add Symbol</button>
+                <button class="tablinks" onclick="openTab(event, 'Tab3')">Delete Symbol</button>
+            </div>
 
+            <div id="Tab1" class="tabcontent">
+                <h3>Get Price by Symbol</h3>
+                <p>
+                    <label>Enter Symbol:</label> <input type="text" id="symbolInput"> <button onclick="getStockPrice()">Get Price</button></p>
+                <div id="priceResult"></div>
+            </div>
+
+            <div id="Tab2" class="tabcontent hide">
+                <h3>Add a Price</h3>
+                <p>
+                    <label>Enter Symbol:</label><input type="text" id="symbolInputTab2">
+                    <label>Enter Price: </label><input type="text" id="priceInputTab2">
+                    <button onclick="addData()" style="width: 20%">Add Symbol</button>
+                </p>
+            </div>
+
+            <!-- Inside Tab 3 -->
+            <div id="Tab3" class="tabcontent hide">
+                <h3>Remove the Price</h3>
+                <p>
+                    <label>Enter Symbol to Remove: </label><input type="text" id="symbolInputTab3">
+                    <button onclick="removeData()">Remove</button>
+                </p>
+                <div id="removeResult"></div>
+            </div>
+            <label id="message" style="color: red"></label>
+        </div>
+
+        <div class="column">
+            <h1>Stock Prices</h1>
+            <h5>Total Stocks : <span id="totalstocks"></span></h5>
+            <div id="stockTableContainer">
+                <table id="stockTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody">
+                        <!-- Data will be inserted here using jQuery -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to open tabs
+        function openTab(evt, tabName) {
+            message('')
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        function loadData(){
+             $.ajax({
+                url: '/get_data',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    // Update the table with the received data
+                    var tableBody = $('#stockTableBody');
+                    var total = 0
+                    
+                    $.each(data, function(index, row) {
+                        tableBody.append('<tr><td>' + row.symbol + '</td><td>' + row.price + '</td></tr>');
+                        total += 1
+                    });
+
+                    $("#totalstocks").html(total)
+
+                },
+                error: function(error) {
+                    console.log('Error fetching data:', error);
+                }
+            });
+        }
+
+        //Initial Load
+        loadData()
+
+        function getStockPrice() {
+            var symbol = $('#symbolInput').val();
+            if (symbol == ''){
+                message("*Error : Enter Mandatory Values!")
+            }else{
+                $.ajax({
+                    url: '/get_price',
+                    type: 'GET',
+                    data: {symbol: symbol},
+                    success: function(data) {
+                        $('#priceResult').html('Price for <b>' + symbol + '</b> is : <span style="color:red; font-weight:bold;"> $ ' + data.price + '</span>');
+                    },
+                    error: function(error) {
+                        alert('Error! '+error);
+                    }
+                });
+            }
+        }
+        
+
+        function addData() {
+            var symbol = $('#symbolInputTab2').val();
+            var price = $('#priceInputTab2').val();
+
+            if (symbol == '' || price == ''){
+                message("*Error : Enter Mandatory Values!")
+            }else{
+                 $.ajax({
+                    url: '/add_data',
+                    type: 'POST',
+                    data: {symbol: symbol, price: price},
+                    success: function(response) {   
+                        if (response == 1){
+                            message("*Info : Price Added Successfully!")      
+                            loadData()   
+                        }else{
+                            message("*Error : Symbol Already Exists!")      
+                        }
+                        
+                    },
+                    error: function(error) {
+                        alert('Error! '+error);
+                    }
+                });
+             }
+        }
+
+         function removeData() {
+            var symbol = $('#symbolInputTab3').val();
+            if (symbol == ''){
+                message("*Error : Enter Mandatory Values!")
+            }else{
+                $.ajax({
+                url: '/remove_data',
+                type: 'POST',
+                data: {symbol: symbol},
+                success: function(response) {
+                    message("*Info : Price Deleted Successfully!")
+                    loadData()
+                },
+                error: function(error) {
+                   alert('Error! '+error);
+                }
+            });
+            }
+        }
+
+        function message(message){
+            $("#message").html(message)
+            return false
+        }
+    </script>
+</body>
+</html>
